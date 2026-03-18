@@ -1,0 +1,10 @@
+[project]
+name = "scrc_histograma_ms"
+version = "0.0.1"
+description = "Microservicio para la gestión de archivos"
+authors = [{name="Dairo Carrasquilla", email="cdairo2204@gmail.com"}]
+requires-python = ">=3.12"
+license = {file="LICENSE"}
+
+[tool.fastapi]
+entrypoint = "src.main:app"
