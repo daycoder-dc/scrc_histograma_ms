@@ -3,11 +3,19 @@ from src.config.database import Session, get_session
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from src.config import database as conn
+from unicodedata import normalize
 from typing import Annotated
 from loguru import logger
 from io import BytesIO
 
 import polars as pl
+import re
+
+def clean_text(text:str):
+    normalize_text = text.strip().lower()
+    normalize_text = re.sub(r"(\s|\/)+", "_", normalize_text)
+    normalize_text = normalize("NFD", normalize_text)
+    return re.sub(r"[\u0300-\u036f]", "", normalize_text)
 
 async def cargar_mano_obra(file: Annotated[UploadFile, Form()], db:Annotated[Session, Depends(get_session)]):
     content = BytesIO(await file.read())
@@ -17,50 +25,72 @@ async def cargar_mano_obra(file: Annotated[UploadFile, Form()], db:Annotated[Ses
     df_mano_obra = pl.read_excel(
         source=content,
         read_options={
-            "header_row": 0,
-            "use_columns": "A:AG"
+            "header_row": 0
         }
     )
 
     logger.info("[Maestro] dataframe cargado. ✔️")
 
-    columns = {
-        "NIC":"nic",
-        "ORDEN":"orden",
-        "CONTRATA":"contrata",
-        "TERRITORIO":"territorio",
-        "ZONA":"zona",
-        "MUNICIPIO":"municipio",
-        "CORREGIMIENTO":"corregimiento",
-        "LOCALIDAD/BARRIO":"localidad_barrio",
-        "TARIFA":"tarifa",
-        "TIPO ACTIVIDAD":"tipo_actividad",
-        "ACTIVIDAD":"actividad",
-        "DIRECCION":"direccion",
-        "ID_TRANSFORMADOR":"id_transformador",
-        "ID_CIRCUITO":"id_circuito",
-        "NUM MEDIDOR":"num_medidor",
-        "MARCA MEDIDOR":"marca_medidor",
-        "DEUDA ACT":"deuda_act",
-        "DEUDA CIERRE":"deuda_cierre",
-        "CANT FACTURA ACT":"cant_factura_act",
-        "CANT FACTURA CIERRE":"cant_factura_cierre",
-        "TIPO OS":"tipo_os",
-        "DESCRIPCION DE TIPO OS":"descripcion_tipo_os",
-        "TIPO SUSPENSION SOLICITADA":"tipo_suspension_solicitada",
-        "TIPO BRIGADA":"tipo_brigada",
-        "ID TECNICO":"id_tecnico",
-        "TECNICO":"tecnico",
-        "AV/RESULTADO":"av_resultado",
-        "ACCION":"accion",
-        "SUBACCION/SUBANOMALIA":"subaccion_subanomalia",
-        "ESTADO OSF":"estado_osf",
-        "ESTADO SIPREM":"estado_siprem",
-        "FECHA":"fecha",
-        "HORA":"hora"
+    # limpiar nombre de columnas
+    df_mano_obra.columns = [clean_text(c) for c in df_mano_obra.columns]
+
+    # mapa de columnas excel - tabla
+    columns_map = {
+        "nic": "nic",
+        "orden": "orden",
+        "contrata": "contrata",
+        "territorio": "territorio",
+        "zona": "zona",
+        "municipio": "municipio",
+        "corregimiento": "corregimiento",
+        "localidad_barrio": "localidad_barrio",
+        "tarifa": "tarifa",
+        "tipo_actividad": "tipo_actividad",
+        "actividad": "actividad",
+        "direccion": "direccion",
+        "id_transformador": "id_transformador",
+        "id_circuito": "id_circuito",
+        "num_medidor": "num_medidor",
+        "marca_medidor": "marca_medidor",
+        "deuda_act": "deuda_act",
+        "deuda_cierre": "deuda_cierre",
+        "cant_factura_act": "cant_factura_act",
+        "cant_factura_cierre": "cant_factura_cierre",
+        "tipo_os": "tipo_os",
+        "descripcion_de_tipo_os": "descripcion_tipo_os",
+        "tipo_suspension_solicitada": "tipo_suspension_solicitada",
+        "tipo_brigada": "tipo_brigada",
+        "tipo_operativa": "tipo_brigada",
+        "id_tecnico": "id_tecnico",
+        "tecnico": "tecnico",
+        "av_resultado": "av_resultado",
+        "accion": "accion",
+        "subaccion_subanomalia": "subaccion_subanomalia",
+        "subaccion": "subaccion_subanomalia",
+        "estado_osf": "estado_osf",
+        "estado_siprem": "estado_siprem",
+        "fecha": "fecha",
+        "fech_cierre": "fecha",
+        "hora": "hora"
     }
 
-    df_mano_obra = df_mano_obra.rename(mapping=columns)
+    # columnas existente en el archivo excel para renombrar
+    columns_rename = {k:v for k,v in columns_map.items() if k in df_mano_obra.columns}
+
+    # renombrado de columnas
+    df_mano_obra = df_mano_obra.rename(mapping=columns_rename)
+
+    # agrega las columnas del mapa que falten en el excel
+    for column in set(columns_map.values()):
+        if column not in df_mano_obra.columns:
+            df_mano_obra = df_mano_obra.with_columns(
+                pl.lit(None, pl.String).alias(column)
+            )
+
+    # remueve las columnas del excel que no existen en el map
+    for column in df_mano_obra.columns:
+        if column not in set(columns_map.values()):
+            df_mano_obra = df_mano_obra.drop(column);
 
     logger.info("[Maestro] columnas renombradas. ✔️")
 
@@ -78,9 +108,11 @@ async def cargar_mano_obra(file: Annotated[UploadFile, Form()], db:Annotated[Ses
 
     logger.info("[Maestro] casting de columnas. ✔️")
 
-    logger.info("[Maestro] registrando ⌛")
-
     try:
+        logger.info("[Maestro] registrando ⌛")
+
+        print(df_mano_obra.schema)
+
         df_mano_obra.write_database(
             table_name="maestro_mano_obra",
             connection=conn.db_uri,
@@ -89,11 +121,18 @@ async def cargar_mano_obra(file: Annotated[UploadFile, Form()], db:Annotated[Ses
         )
 
         logger.info("[Maestro] datos registrado. ✔️")
+
+        return JSONResponse(
+            content=jsonable_encoder({"status":"registrado"}),
+            status_code=status.HTTP_201_CREATED
+        )
     except Exception as e:
         logger.error("[Maestro] error base de datos ✖️")
         print(e)
 
     return JSONResponse(
-        content=jsonable_encoder({"status":"registrado"}),
-        status_code=status.HTTP_201_CREATED
+        content=jsonable_encoder({"status":"error"}),
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
+
+
