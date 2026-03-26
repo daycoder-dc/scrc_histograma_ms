@@ -14,6 +14,10 @@ router = APIRouter(
 async def root():
     return Response(status_code=status.HTTP_200_OK)
 
-@router.post("/cargar")
+@router.post("/cargar/manobra")
 async def cargar_mano_obra(model: Annotated[dict, Depends(mm.cargar_mano_obra)]):
+    return model
+
+@router.post("/cargar/pagos")
+async def cargar_mestro_pago(model: Annotated[dict, Depends(mm.cargar_maestro_pagos)]):
     return model
