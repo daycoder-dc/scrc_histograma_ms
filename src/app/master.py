@@ -67,10 +67,10 @@ async def cargar_mestro_pago(file: Annotated[UploadFile, Form()]):
         logger.info(f"[Maestro - {page.get("sheet")}] normalización de columnas. ✔️")
 
         try:
-            logger.info(f"[Maestro - {page.get("seet")}] registrando ⌛")
+            logger.info(f"[Maestro - {page.get("sheet")}] registrando ⌛")
 
             df.write_database(
-                table_name="maestro_pagos_csr",
+                table_name="maestro",
                 connection=conn.db_uri,
                 engine="adbc",
                 if_table_exists="append"
