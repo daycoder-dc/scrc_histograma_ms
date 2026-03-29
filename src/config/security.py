@@ -1,6 +1,8 @@
-from fastapi import Security, HTTPException, Depends, status
 from src.config.settings import get_setting, Settings
+
+from fastapi import Security, HTTPException, Depends, status
 from fastapi.security import APIKeyHeader
+
 from typing import Annotated
 
 API_KEY_NAME = "X-API-KEY"
