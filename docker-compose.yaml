@@ -1,0 +1,13 @@
+services:
+  scr_histograma_ms:
+    build: .
+    container_name: scr_histograma_ms
+    restart: unless-stopped
+    networks:
+      - scr_histograma_net
+    env_file:
+      - .env
+
+networks:
+  scr_histograma_net:
+    external: true
