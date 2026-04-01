@@ -72,8 +72,9 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
         "estado_osf": "estado_osf",
         "estado_siprem": "estado_siprem",
         "fecha": "fecha",
-        "fech_cierre": "fecha",
-        "hora": "hora"
+        "fecha_cierre": "fecha",
+        "hora": "hora",
+        "hora_fin": "hora"
     }
 
     # columnas existente en el archivo excel para renombrar
