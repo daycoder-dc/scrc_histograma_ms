@@ -111,8 +111,21 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
         pl.col("deuda_cierre").cast(pl.Float64, strict=False),
         pl.col("cant_factura_act").cast(pl.Int32, strict=False),
         pl.col("cant_factura_cierre").cast(pl.Int32, strict=False),
-        pl.col("hora").cast(pl.Time, strict=False).dt.to_string("%H:%M:%S")
+        pl.col("fecha").cast(pl.Date, strict=False)
     )
+
+    try:
+        df_mano_obra = df_mano_obra.with_columns(
+            pl.col("hora").str.to_time("%H:%M:%S", strict=False).dt.to_string()
+        )
+    except Exception as e:
+        logger.error("[Maestro] Fallo conversion de hora por texto ❌")
+
+        df_mano_obra = df_mano_obra.with_columns(
+            pl.col("hora").cast(pl.Time, strict=False).dt.to_string("%H:%M:%S")
+        )
+
+        logger.info("[Maestro] Conversión de fecha por cast time ✔️")
 
     logger.info("[Maestro] casting de columnas. ✔️")
 
