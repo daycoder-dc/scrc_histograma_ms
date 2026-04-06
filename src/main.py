@@ -12,7 +12,7 @@ import uvicorn
 
 app = FastAPI(
     title = "scrc histograma microservice",
-    root_path = "/ms/v1"
+    root_path = "/ms"
 )
 
 app.add_middleware(

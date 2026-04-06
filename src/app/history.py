@@ -13,7 +13,7 @@ from io import BytesIO
 import polars as pl
 
 router = APIRouter(
-    prefix="/history",
+    prefix="/v1/history",
     tags=["history"],
     dependencies=[Depends(get_apikey)],
     responses={404: {"description":"Not Found"}}
@@ -80,8 +80,12 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
     # columnas existente en el archivo excel para renombrar
     columns_rename = {k:v for k,v in columns_map.items() if k in df_mano_obra.columns}
 
-    # renombrado de columnas
-    df_mano_obra = df_mano_obra.rename(mapping=columns_rename)
+    try:
+        # renombrado de columnas
+        df_mano_obra = df_mano_obra.rename(mapping=columns_rename)
+    except Exception as e:
+        logger.error("Columnas duplicada")
+        logger.error(e)
 
     # agrega las columnas del mapa que falten en el excel
     for column in set(columns_map.values()):

@@ -13,7 +13,7 @@ from io import BytesIO
 import polars as pl
 
 router = APIRouter(
-    prefix="/master",
+    prefix="/v1/master",
     tags=["master"],
     dependencies=[Depends(get_apikey)],
     responses={404: {"description":"Not Found"}}
