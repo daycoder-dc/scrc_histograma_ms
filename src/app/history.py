@@ -3,6 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from src.config.security import get_apikey
+from adbc_driver_postgresql import dbapi
 from src.config import database as conn
 from src.config import normalize
 
@@ -130,16 +131,34 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
     logger.info("[Maestro] casting de columnas. ✔️")
 
     try:
-        logger.info("[Maestro] registrando ⌛")
+        with dbapi.connect(conn.db_uri) as cnn:
+            logger.info("[Maestro] Validar datos resitrados ⌛")
 
-        df_mano_obra.write_database(
-            table_name="historico",
-            connection=conn.db_uri,
-            engine="adbc",
-            if_table_exists="append"
-        )
+            sql = (
+                "select * from historico h "
+                "where h.eliminado = false "
+                "and h.fecha_registro::date = current_date"
+            )
 
-        logger.info("[Maestro] datos registrado. ✔️")
+            df_existente = pl.read_database(query=sql, connection=cnn)
+
+            df_insertar = df_mano_obra.join(
+                df_existente,
+                on=["nic", "orden", "fecha", "hora"],
+                how="anti"
+            )
+
+            logger.info("[Maestro] datos validados ✔️")
+            logger.info("[Maestro] registrando ⌛")
+
+            df_insertar.write_database(
+                table_name="historico",
+                connection=cnn,
+                engine="adbc",
+                if_table_exists="append"
+            )
+
+            logger.info(f"[Maestro] {len(df_insertar)} datos registrado. ✔️")
 
         return JSONResponse(
             content=jsonable_encoder({"status":"registrado"}),
