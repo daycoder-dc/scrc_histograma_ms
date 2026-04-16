@@ -78,7 +78,7 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
         "hora_fin": "hora"
     }
 
-    # columnas existente en el archivo excel para renombrar
+    # verifica las columnas existente en el archivo excel para renombrar
     columns_rename = {k:v for k,v in columns_map.items() if k in df_mano_obra.columns}
 
     try:
@@ -98,7 +98,7 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
     # remueve las columnas del excel que no existen en el map
     for column in df_mano_obra.columns:
         if column not in set(columns_map.values()):
-            df_mano_obra = df_mano_obra.drop(column);
+            df_mano_obra = df_mano_obra.drop(column)
 
     logger.info("[Maestro] columnas renombradas. ✔️")
 
@@ -115,18 +115,22 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
         pl.col("fecha").cast(pl.Date, strict=False)
     )
 
+    # limpieza de datos
+    df_mano_obra = df_mano_obra.drop_nulls(subset=["fecha", "tipo_brigada", "tecnico"])
+    logger.info("[Maestro] datos limpieados")
+
     try:
         df_mano_obra = df_mano_obra.with_columns(
             pl.col("hora").str.to_time("%H:%M:%S", strict=False).dt.to_string()
         )
     except Exception as e:
-        logger.error("[Maestro] Fallo conversion de hora por texto ❌")
+        logger.error("[Maestro] Fallo conversion de hora ❌")
 
         df_mano_obra = df_mano_obra.with_columns(
             pl.col("hora").cast(pl.Time, strict=False).dt.to_string("%H:%M:%S")
         )
 
-        logger.info("[Maestro] Conversión de fecha por cast time ✔️")
+        logger.info("[Maestro] Conversión de hora por cast time ✔️")
 
     logger.info("[Maestro] casting de columnas. ✔️")
 

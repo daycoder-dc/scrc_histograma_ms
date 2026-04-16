@@ -1,12 +1,13 @@
-from src.config.settings import get_setting
-from src.app import history
-from src.app import master
-
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, status
+
+from src.config.settings import get_setting
+from src.app import history
+from src.app import master
+from src.app import mapa
 
 import uvicorn
 
@@ -30,6 +31,7 @@ app.add_middleware(
 
 app.include_router(history.router)
 app.include_router(master.router)
+app.include_router(mapa.router)
 
 @app.get("/")
 async def root():
