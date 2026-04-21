@@ -8,6 +8,7 @@ from src.config.settings import get_setting
 from src.app import history
 from src.app import master
 from src.app import mapa
+from src.app import data_cleaner
 
 import uvicorn
 
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(history.router)
 app.include_router(master.router)
 app.include_router(mapa.router)
+app.include_router(data_cleaner.router)
 
 @app.get("/")
 async def root():
