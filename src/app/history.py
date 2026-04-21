@@ -140,8 +140,7 @@ async def upload(file: Annotated[UploadFile, Form()], archivo_id:Annotated[str, 
 
             sql = (
                 "select * from historico h "
-                "where h.eliminado = false "
-                "and h.fecha_registro::date = current_date"
+                "where h.eliminado = false"
             )
 
             df_existente = pl.read_database(query=sql, connection=cnn)
